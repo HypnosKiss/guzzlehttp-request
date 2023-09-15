@@ -1,0 +1,38 @@
+{
+    "name": "sweeper/guzzlehttp-request",
+    "description": "guzzlehttp request",
+    "type": "library",
+    "keywords": [
+        "request",
+        "guzzlehttp",
+        "php"
+    ],
+    "homepage": "https://github.com/HypnosKiss/guzzlehttp-request/",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "sweeper",
+            "email": "wili.lixiang@gmail.com",
+            "homepage": "https://github.com/HypnosKiss",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=7.2",
+        "ext-json": "*",
+        "guzzlehttp/guzzle": "^7.0",
+        "rtheunissen/guzzle-log-middleware": "^1.0",
+        "sweeper/design-pattern": "^1.0 || ^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sweeper\\GuzzleHttpRequest\\": "src/"
+        }
+    },
+    "config": {
+        "preferred-install": "dist",
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "dev"
+}

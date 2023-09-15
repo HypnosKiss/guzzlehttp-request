@@ -50,3 +50,10 @@
 
 # Embedded web-server pid file
 /.web-server-pid
+assets/*
+!assets/.gitignore
+protected/runtime/*
+!protected/runtime/.gitignore
+protected/data/*.db
+themes/classic/views/
+test
