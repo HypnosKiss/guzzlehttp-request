@@ -5,7 +5,6 @@ namespace Sweeper\GuzzleHttpRequest;
 use BadMethodCallException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Sweeper\DesignPattern\Traits\MultiPattern;
 
