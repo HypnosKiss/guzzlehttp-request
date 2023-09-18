@@ -288,11 +288,11 @@ abstract class Request
         if (defined(static::class . "::$method")) {
             return $this->doSyncRequest(constant(static::class . "::$method"), ...$arguments);
         }
-        if (method_exists($this->getClient(), $name)) {
-            return $this->getClient()->{$name}(...$arguments);
-        }
         if (method_exists($this, $name)) {
             return $this->{$name}(...$arguments);
+        }
+        if (method_exists($this->getClient(), $name)) {
+            return $this->getClient()->{$name}(...$arguments);
         }
 
         throw new BadMethodCallException('Call Undefined method');
