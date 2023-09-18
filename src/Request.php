@@ -14,11 +14,15 @@ use Sweeper\DesignPattern\Traits\MultiPattern;
  * Author: Sweeper <wili.lixiang@gmail.com>
  * Time: 2023/8/18 18:55
  * @Package \Sweeper\GuzzleHttpRequest\Request
- * @method $this get(string $url, array $params = [], array $options = [])
- * @method $this post(string $url, array $params = [], array $options = [])
- * @method $this put(string $url, array $params = [], array $options = [])
- * @method $this delete(string $url, array $params = [], array $options = [])
- * @method $this patch(string $url, array $params = [], array $options = [])
+ * @method Response get(string $url, array $params = [], array $options = [])
+ * @method Response post(string $url, array $params = [], array $options = [])
+ * @method Response put(string $url, array $params = [], array $options = [])
+ * @method Response delete(string $url, array $params = [], array $options = [])
+ * @method Response patch(string $url, array $params = [], array $options = [])
+ * @method Response connect(string $url, array $params = [], array $options = [])
+ * @method Response head(string $url, array $params = [], array $options = [])
+ * @method Response options(string $url, array $params = [], array $options = [])
+ * @method Response trace(string $url, array $params = [], array $options = [])
  * @mixin Client
  */
 abstract class Request
@@ -212,14 +216,7 @@ abstract class Request
      */
     public function withOptions(array $options = []): Client
     {
-        return $this->getClient(array_replace_recursive([
-            'headers'         => [
-                'Content-Type' => 'application/json',
-            ],
-            'verify'          => false,
-            'connect_timeout' => $this->getConnectTimeout(),
-            'timeout'         => $this->getTimeout(),
-        ], $options));
+        return $this->getClient($this->buildOptions($options));
     }
 
     /**
