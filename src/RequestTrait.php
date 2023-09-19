@@ -217,12 +217,12 @@ trait RequestTrait
         if (method_exists($this, $name)) {
             return $this->{$name}(...$arguments);
         }
+        if (method_exists($this->getClient(), $name)) {
+            return $this->getClient()->{$name}(...$arguments);
+        }
         // 调用父类
         if (is_callable([$this, $name])) {
             return parent::__call($name, $arguments);
-        }
-        if (method_exists($this->getClient(), $name)) {
-            return $this->getClient()->{$name}(...$arguments);
         }
 
         throw new \BadMethodCallException('Method no exists:' . $name);
