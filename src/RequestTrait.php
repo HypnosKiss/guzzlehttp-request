@@ -462,6 +462,25 @@ trait RequestTrait
     }
 
     /**
+     * 获取响应内容
+     * Author: Sweeper <wili.lixiang@gmail.com>
+     * DateTime: 2023/9/19 15:56
+     * @param \Psr\Http\Message\ResponseInterface|null $response
+     * @return string
+     */
+    public static function getResponseContents(?ResponseInterface $response): string
+    {
+        $contents = '';
+        // Make sure that the content of the body is available again.
+        if ($response) {
+            $contents = $response->getBody()->getContents() ?? '';
+            $response->getBody()->rewind();// $response->getBody()->seek(0);
+        }
+
+        return $contents;
+    }
+
+    /**
      * 第三方接口返回内容解析
      * Author: Sweeper <wili.lixiang@gmail.com>
      * DateTime: 2023/9/15 13:01
