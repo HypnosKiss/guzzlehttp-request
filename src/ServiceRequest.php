@@ -52,51 +52,16 @@ class ServiceRequest extends CommonRequest
      * @param null  $secretKey
      * @return array
      */
-    public static function withRequestParams(array $params = [], array &$requestParams = [], $appKey = null, $secretKey = null): array
+    protected function withRequestParams(array $params = [], array &$requestParams = [], $appKey = null, $secretKey = null): array
     {
         $requestParams         = array_replace_recursive($requestParams, [
             'params'     => json_encode($params),
             'partner_id' => $appKey,
             'timestamp'  => time(),
         ]);
-        $requestParams['sign'] = static::generateSign($requestParams, $secretKey);
+        $requestParams['sign'] = $this->generateSign($requestParams, $secretKey);
 
         return $requestParams;
-    }
-
-    /**
-     * 解析响应数据
-     * Author: Sweeper <wili.lixiang@gmail.com>
-     * DateTime: 2023/9/15 15:46
-     * @param \Psr\Http\Message\ResponseInterface $response
-     * @return \Sweeper\GuzzleHttpRequest\Response
-     */
-    public function resolveResponse(ResponseInterface $response): Response
-    {
-        //返回结果解析
-        $httpCode        = $response->getStatusCode();
-        $responseContent = json_decode($response->getBody()->getContents() ?? '', true);
-        $logicCode       = $responseContent['code'] ?? -1;
-        $message         = $responseContent['message'] ?? $responseContent['msg'] ?? $response->getReasonPhrase();
-        $errors          = $responseContent['errors'] ?? [];
-        if (!$this->assertHttpSuccess($httpCode)) {
-            $message = "接口请求口成功，返回错误：{$message}[Request failed with HTTP Code {$httpCode}.]";
-
-            return Response::error($message, $responseContent);
-        }
-        if ($this->assertLogicSuccess($logicCode)) {
-            $message = "接口请求口成功，返回错误：{$message}[Request succeeded with HTTP Code {$httpCode}.][with Logic Code {$logicCode}]";
-
-            return Response::error($message, $responseContent);
-        }
-        if ($errors) {
-            $message = implode(', ', $errors);
-            $message = "接口请求口成功，返回错误：{$message}[Request succeeded with HTTP Code {$httpCode}.]";
-
-            return Response::error($message, $responseContent);
-        }
-
-        return new Response(Response::CODE_SUCCESS, $message, $responseContent);
     }
 
     /**
@@ -106,10 +71,10 @@ class ServiceRequest extends CommonRequest
      * @param array $config
      * @return array
      */
-    public static function withHeader(array &$config = []): array
+    protected function withHeader(array &$config = []): array
     {
         // 创建 Handler
-        $handlerStack = static::getHandlerStack($config);
+        $handlerStack = $this->getHandler($config);
         // Add a middleware with a name
         $handlerStack->push(Middleware::mapRequest(function(RequestInterface $request) {
             return $request->withHeader('X-Foo', 'Bar');
@@ -139,6 +104,41 @@ class ServiceRequest extends CommonRequest
         $config['handler'] = $handlerStack;
 
         return $config;
+    }
+
+    /**
+     * 解析响应数据
+     * Author: Sweeper <wili.lixiang@gmail.com>
+     * DateTime: 2023/9/15 15:46
+     * @param \Psr\Http\Message\ResponseInterface $response
+     * @return \Sweeper\GuzzleHttpRequest\Response
+     */
+    public function resolveResponse(ResponseInterface $response): Response
+    {
+        //返回结果解析
+        $httpCode        = $response->getStatusCode();
+        $responseContent = json_decode($response->getBody()->getContents() ?? '', true);
+        $logicCode       = $responseContent['code'] ?? -1;
+        $message         = $responseContent['message'] ?? $responseContent['msg'] ?? $response->getReasonPhrase();
+        $errors          = $responseContent['errors'] ?? [];
+        if (!$this->assertHttpSuccess($httpCode)) {
+            $message = "接口请求口成功，返回错误：{$message}[Request failed with HTTP Code {$httpCode}.]";
+
+            return Response::error($message, $responseContent);
+        }
+        if (!$this->assertLogicSuccess($logicCode)) {
+            $message = "接口请求口成功，返回错误：{$message}[Request succeeded with HTTP Code {$httpCode}.][with Logic Code {$logicCode}]";
+
+            return Response::error($message, $responseContent);
+        }
+        if ($errors) {
+            $message = implode(', ', $errors);
+            $message = "接口请求口成功，返回错误：{$message}[Request succeeded with HTTP Code {$httpCode}.]";
+
+            return Response::error($message, $responseContent);
+        }
+
+        return new Response(HttpCode::OK, $message, $responseContent);
     }
 
 }

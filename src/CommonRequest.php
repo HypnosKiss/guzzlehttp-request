@@ -21,24 +21,11 @@ use Psr\Log\LoggerInterface;
  * Author: Sweeper <wili.lixiang@gmail.com>
  * DateTime: 2023/9/15 13:38
  * @Package \Sweeper\GuzzleHttpRequest\CommonRequest
- * @method v1()
- * @method v2()
+ * @method self v1()
+ * @method self v2()
  */
 abstract class CommonRequest extends Request
 {
-
-    public const   VERSION_V1 = 'v1';
-
-    public const   VERSION_V2 = 'v2';
-
-    /**
-     * 支持的版本列表
-     * 子类需要支持更多的版本可以重写
-     */
-    public static $VERSION_MAP = [
-        self::VERSION_V1 => self::VERSION_V1,
-        self::VERSION_V2 => self::VERSION_V2,
-    ];
 
     /** @var mixed|null 版本信息 */
     private $version;
@@ -76,27 +63,11 @@ abstract class CommonRequest extends Request
      */
     public function __call(string $name, array $arguments)
     {
-        if (isset(static::$VERSION_MAP[$name]) && static::$VERSION_MAP[$name]) {
-            return $this->setVersion($name);
-        }
         if (preg_match('/^v\d+$/', $name)) {//判断字符串格式为：v1、v2 ...
             return $this->setVersion($name);
         }
 
         return parent::__call($name, $arguments);// 调用父类
-    }
-
-    /**
-     * 构建请求地址
-     * Author: Sweeper <wili.lixiang@gmail.com>
-     * DateTime: 2023/9/15 13:41
-     * @param string      $path
-     * @param string|null $domain
-     * @return string
-     */
-    public function getRequestUri(string $path = '', string $domain = null): string
-    {
-        return $this->buildRequestUri($path, $domain);
     }
 
     /**
@@ -112,8 +83,8 @@ abstract class CommonRequest extends Request
         $httpCode        = $response->getStatusCode();
         $responseContent = $response->getBody()->getContents() ?? [];
         $message         = $responseContent['message'] ?? $response->getReasonPhrase();
-        if (!empty($httpCode) && $httpCode !== HttpCode::OK && $httpCode !== HttpCode::CREATED && $httpCode !== HttpCode::ACCEPTED && $httpCode !== HttpCode::NO_CONTENT) {
-            $message = "接口请求口成功，返回错误：{$message}[Request failed with HTTP Code {$httpCode}.]";
+        if (!$this->assertHttpSuccess($httpCode)) {
+            $message = "接口请求口成功，返回错误：{$message}[Request failed with HTTP Code $httpCode.]";
         }
 
         return new Response($httpCode, $message, $responseContent);
@@ -126,7 +97,7 @@ abstract class CommonRequest extends Request
      * @param array $config
      * @return \GuzzleHttp\HandlerStack
      */
-    public static function getHandlerStack(array $config = []): HandlerStack
+    protected function getHandler(array $config = []): HandlerStack
     {
         return $config['handler'] ?? HandlerStack::create();
     }
@@ -139,7 +110,7 @@ abstract class CommonRequest extends Request
      * @param callable|null $allowRetryFunc
      * @return \Closure
      */
-    public static function retryDecider(int $maxRetryTimes = 1, callable $allowRetryFunc = null): Closure
+    protected function retryDecider(int $maxRetryTimes = 1, callable $allowRetryFunc = null): Closure
     {
         return function($retries, RequestInterface $request, ResponseInterface $response = null, \Throwable $exception = null) use ($maxRetryTimes, $allowRetryFunc) {
             // 最允许重试次数内，继续重试，超过最大重试次数，不再重试
@@ -173,50 +144,10 @@ abstract class CommonRequest extends Request
      * @param int $intervalMillisecond
      * @return \Closure
      */
-    public static function retryDelay(int $intervalMillisecond = 1000): Closure
+    protected function retryDelay(int $intervalMillisecond = 1000): Closure
     {
         return function($numberOfRetries) use ($intervalMillisecond) {
             return $intervalMillisecond * $numberOfRetries;
-        };
-    }
-
-    /**
-     * 添加请求头
-     * Author: Sweeper <wili.lixiang@gmail.com>
-     * DateTime: 2023/9/15 14:17
-     * @param $header
-     * @param $value
-     * @return \Closure
-     */
-    public static function addRequestHeader($header, $value): Closure
-    {
-        return function(callable $handler) use ($header, $value) {
-            return function(RequestInterface $request, array $options) use ($handler, $header, $value) {
-                $request = $request->withHeader($header, $value);
-
-                return $handler($request, $options);
-            };
-        };
-    }
-
-    /**
-     * 添加响应头
-     * Author: Sweeper <wili.lixiang@gmail.com>
-     * DateTime: 2023/9/15 14:17
-     * @param $header
-     * @param $value
-     * @return \Closure
-     */
-    public static function addResponseHeader($header, $value): Closure
-    {
-        return function(callable $handler) use ($header, $value) {
-            return function(RequestInterface $request, array $options) use ($handler, $header, $value) {
-                return $handler($request, $options)->then(
-                    function(ResponseInterface $response) use ($header, $value) {
-                        return $response->withHeader($header, $value);
-                    }
-                );
-            };
         };
     }
 
@@ -233,12 +164,12 @@ abstract class CommonRequest extends Request
      * @return array
      * @see \GuzzleHttp\Middleware::retry()
      */
-    public static function withRetry(array $config = [], int $maxRetryTimes = 1, callable $allowRetryFunc = null, int $intervalMillisecond = 3000, Closure $retryDecider = null, Closure $retryDelay = null): array
+    protected function withRetry(array $config = [], int $maxRetryTimes = 1, callable $allowRetryFunc = null, int $intervalMillisecond = 3000, Closure $retryDecider = null, Closure $retryDelay = null): array
     {
         // 创建 Handler
-        $handlerStack = static::getHandlerStack($config);
+        $handlerStack = $this->getHandler($config);
         // 创建重试中间件，指定决策者为 $this->retryDecider(),指定重试延迟为 $this->retryDelay()
-        $handlerStack->push(Middleware::retry($retryDecider ?? static::retryDecider($maxRetryTimes, $allowRetryFunc), $retryDelay ?? static::retryDelay($intervalMillisecond)));
+        $handlerStack->push(Middleware::retry($retryDecider ?? $this->retryDecider($maxRetryTimes, $allowRetryFunc), $retryDelay ?? $this->retryDelay($intervalMillisecond)));
         $config['handler'] = $handlerStack;
 
         return $config;
@@ -254,10 +185,10 @@ abstract class CommonRequest extends Request
      * @return array
      * {@see \GuzzleHttp\Middleware::tap()}
      */
-    public static function withTap(array $config = [], Closure $before = null, Closure $after = null): array
+    protected function withTap(array $config = [], Closure $before = null, Closure $after = null): array
     {
         // 创建 Handler
-        $handlerStack = static::getHandlerStack($config);
+        $handlerStack = $this->getHandler($config);
         $before       = $before && is_callable($before) ? $before : function(RequestInterface $request, array $options) {
             echo '>>> ', date('Y-m-d H:i:s'), ' Before sending the request', PHP_EOL;
         };
@@ -279,10 +210,10 @@ abstract class CommonRequest extends Request
      * @return array
      * {@see \GuzzleHttp\RequestOptions::DEBUG}
      */
-    public static function withDebug(array $config = []): array
+    protected function withDebug(array $config = []): array
     {
         // 创建 Handler
-        $config['handler'] = static::getHandlerStack($config);
+        $config['handler'] = $this->getHandler($config);
         $config['debug']   = true;
 
         return $config;
@@ -298,10 +229,10 @@ abstract class CommonRequest extends Request
      * @return array
      * {@see \GuzzleHttp\RequestOptions::DELAY}
      */
-    public static function withDelay(array $config = [], int $delay = 0): array
+    protected function withDelay(array $config = [], int $delay = 0): array
     {
         // 创建 Handler
-        $config['handler'] = static::getHandlerStack($config);
+        $config['handler'] = $this->getHandler($config);
         $config['delay']   = (float)$delay;
 
         return $config;
@@ -317,10 +248,10 @@ abstract class CommonRequest extends Request
      * @return array
      * {@see \GuzzleHttp\RequestOptions}
      */
-    public static function withRequestOptions(array $config = [], string $optionKey = '', $optionValue = null): array
+    protected function withRequestOptions(array $config = [], string $optionKey = '', $optionValue = null): array
     {
         // 创建 Handler
-        $config['handler'] = static::getHandlerStack($config);
+        $config['handler'] = $this->getHandler($config);
         $const             = strtoupper($optionKey);
         if (defined(RequestOptions::class . "::$const")) {
             $config[$optionKey] = $optionValue;
@@ -340,12 +271,12 @@ abstract class CommonRequest extends Request
      * @return array
      * {@see \GuzzleHttp\Middleware::log()}
      */
-    public static function withLog(array $config = [], LoggerInterface $logger = null, MessageFormatterInterface $formatter = null, string $logLevel = 'info'): array
+    protected function withLog(array $config = [], LoggerInterface $logger = null, MessageFormatterInterface $formatter = null, string $logLevel = 'info'): array
     {
         // 创建 Handler
-        $handlerStack = static::getHandlerStack($config);
+        $handlerStack = $this->getHandler($config);
         // 日志中间件
-        $middlewareLog = $logger ? Middleware::log($logger, $formatter ?? new MessageFormatter()) : static::getLoggerMiddleware();
+        $middlewareLog = $logger ? Middleware::log($logger, $formatter ?? new MessageFormatter(), $logLevel) : $this->getLoggerMiddleware();
         // 创建日志中间件
         $handlerStack->push($middlewareLog);
         $config['handler'] = $handlerStack;
@@ -357,14 +288,16 @@ abstract class CommonRequest extends Request
      * 日志中间件
      * Author: Sweeper <wili.lixiang@gmail.com>
      * DateTime: 2023/9/15 15:03
+     * @param LoggerInterface|callable $logger
+     * @param string|callable Constant or callable that accepts a Response.
      * @return \Concat\Http\Middleware\Logger
      */
-    public static function getLoggerMiddleware(): Logger
+    protected function getLoggerMiddleware(callable $logger = null, callable $formatter = null): Logger
     {
-        $logger    = function($level, $message, array $context) {
+        $logger    = $logger ?? function($level, $message, array $context) {
             echo date('Y-m-d H:i:s') . " [$level] " . (is_string($message) ? $message : json_encode((array)$message, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)), PHP_EOL;
         };
-        $formatter = function($request, $response, $reason) {
+        $formatter = $formatter ?? function($request, $response, $reason) {
             /**
              * @var \GuzzleHttp\Psr7\Request  $request
              * @var \GuzzleHttp\Psr7\Response $response
@@ -422,7 +355,7 @@ abstract class CommonRequest extends Request
      * @param string $secretKey
      * @return string
      */
-    protected static function generateSign(array $params, string $secretKey): string
+    protected function generateSign(array $params, string $secretKey): string
     {
         ksort($params);
         $stringToBeSigned = '';
