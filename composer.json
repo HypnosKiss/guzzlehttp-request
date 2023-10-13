@@ -27,6 +27,12 @@
     "autoload": {
         "psr-4": {
             "Sweeper\\GuzzleHttpRequest\\": "src/"
+        },
+        "files": []
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "test"
         }
     },
     "config": {
