@@ -108,7 +108,7 @@ class CommonRequest extends Request
     {
         //返回结果解析
         $httpCode        = $response->getStatusCode();
-        $responseContent = json_decode(static::getResponseContents($response), true);
+        $responseContent = json_decode(static::getResponseContents($response), true) ?: [];
         $logicCode       = $responseContent['code'] ?? -1;
         $message         = $responseContent['message'] ?? $responseContent['msg'] ?? $response->getReasonPhrase();
         $errors          = $responseContent['errors'] ?? [];
