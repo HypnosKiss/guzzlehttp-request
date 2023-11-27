@@ -16,14 +16,24 @@ use Psr\Http\Message\ResponseInterface;
  * DateTime: 2023/9/19 8:56
  * @Package \Sweeper\GuzzleHttpRequest\RequestTrait
  * @method Response get(string $url, array $params = [], array $options = []) GET 请求
- * @method Response post(string $url, array $params = [], array $options = [])
- * @method Response put(string $url, array $params = [], array $options = [])
- * @method Response delete(string $url, array $params = [], array $options = [])
- * @method Response patch(string $url, array $params = [], array $options = [])
- * @method Response connect(string $url, array $params = [], array $options = [])
- * @method Response head(string $url, array $params = [], array $options = [])
- * @method Response options(string $url, array $params = [], array $options = [])
- * @method Response trace(string $url, array $params = [], array $options = [])
+ * @method Response post(string $url, array $params = [], array $options = []) POST 请求
+ * @method Response put(string $url, array $params = [], array $options = []) PUT 请求
+ * @method Response delete(string $url, array $params = [], array $options = []) DELETE 请求
+ * @method Response patch(string $url, array $params = [], array $options = []) PATCH 请求
+ * @method Response connect(string $url, array $params = [], array $options = []) CONNECT 请求
+ * @method Response head(string $url, array $params = [], array $options = []) HEAD 请求
+ * @method Response options(string $url, array $params = [], array $options = []) OPTIONS 请求
+ * @method Response trace(string $url, array $params = [], array $options = []) TRACE 请求
+ * @method static Response get(string $url, array $params = [], array $options = []) GET 请求
+ * @method static Response post(string $url, array $params = [], array $options = []) POST 请求
+ * @method static Response put(string $url, array $params = [], array $options = []) PUT 请求
+ * @method static Response delete(string $url, array $params = [], array $options = []) DELETE 请求
+ * @method static Response patch(string $url, array $params = [], array $options = []) PATCH 请求
+ * @method static Response connect(string $url, array $params = [], array $options = []) CONNECT 请求
+ * @method static Response head(string $url, array $params = [], array $options = []) HEAD 请求
+ * @method static Response options(string $url, array $params = [], array $options = []) OPTIONS 请求
+ * @method static Response trace(string $url, array $params = [], array $options = []) TRACE 请求
+ * @method [[static] return type] [name]([[type] [parameter]<, ...>]) [<description>]
  * @method static self
  * @mixin Client
  */
@@ -65,6 +75,18 @@ trait RequestTrait
 
     /** @var int 默认超时时间 */
     private $timeout = 60;
+
+    /** @var string 请求方法 */
+    private $method = self::GET;
+
+    /** @var string 请求地址 */
+    private $uri = '';
+
+    /** @var array 请求参数 */
+    private $params = [];
+
+    /** @var array 请求选项 */
+    private $options = [];
 
     /**
      * 获取客户端
@@ -117,6 +139,54 @@ trait RequestTrait
     public function setClientConfig(array $clientConfig): self
     {
         $this->clientConfig = $clientConfig;
+
+        return $this;
+    }
+
+    public function getMethod(): string
+    {
+        return $this->method;
+    }
+
+    public function setMethod(string $method): self
+    {
+        $this->method = $method;
+
+        return $this;
+    }
+
+    public function getUri(): string
+    {
+        return $this->uri;
+    }
+
+    public function setUri(string $uri): self
+    {
+        $this->uri = $uri;
+
+        return $this;
+    }
+
+    public function getParams(): array
+    {
+        return $this->params;
+    }
+
+    public function setParams(array $params): self
+    {
+        $this->params = $params;
+
+        return $this;
+    }
+
+    public function getOptions(): array
+    {
+        return $this->options;
+    }
+
+    public function setOptions(array $options): self
+    {
+        $this->options = $options;
 
         return $this;
     }
@@ -347,6 +417,21 @@ trait RequestTrait
     protected function sendSyncRequest(string $method, string $url, array $params = [], array $options = []): Response
     {
         return $this->doSyncRequest($method, $url, $params, $this->buildOptions($options));
+    }
+
+    /**
+     * 执行请求
+     * Author: Sweeper <wili.lixiang@gmail.com>
+     * DateTime: 2023/11/27 18:19
+     * @param string|null $method
+     * @param string|null $url
+     * @param array       $params
+     * @param array       $options
+     * @return \Sweeper\GuzzleHttpRequest\Response
+     */
+    protected function do(?string $method = '', ?string $url = '', array $params = [], array $options = []): Response
+    {
+        return $this->doSyncRequest($method ?: $this->getMethod(), $url ?: $this->getUri(), array_replace($params ?: $this->getParams(), $options ?: $this->getOptions()));
     }
 
     /**

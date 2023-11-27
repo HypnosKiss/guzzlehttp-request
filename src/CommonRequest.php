@@ -23,6 +23,7 @@ use Psr\Log\LoggerInterface;
  * @Package \Sweeper\GuzzleHttpRequest\CommonRequest
  * @method self v1()
  * @method self v2()
+ * @method self v[\d]()
  */
 class CommonRequest extends Request
 {
@@ -470,6 +471,62 @@ class CommonRequest extends Request
         $requestParams['sign'] = $this->generateSign($requestParams, $secretKey);
 
         return $requestParams;
+    }
+
+    /**
+     * 使用指定选项
+     * Author: Sweeper <wili.lixiang@gmail.com>
+     * DateTime: 2023/11/23 17:22
+     * @param array         $options
+     * @param callable|null $handler
+     * @param bool          $registerLog
+     * @param callable|null $logMiddleware
+     * @return array
+     */
+    protected function addOptions(array $options = [], callable $handler = null, bool $registerLog = false, callable $logMiddleware = null): array
+    {
+        // 创建 Handler
+        if (isset($options['handler']) && $options['handler'] instanceof HandlerStack) {
+            $handlerStack = $options['handler'];
+        } else {
+            $handlerStack = HandlerStack::create($handler);
+        }
+
+        // 附带请求头信息
+        $handlerStack->push(Middleware::mapRequest(function(RequestInterface $request) {
+            return $request->withHeader('X-Middleware-Request-Time', microtime(true));
+        }), 'Middleware::mapRequest');
+
+        // 附带响应头信息
+        $handlerStack->push(Middleware::mapResponse(function(ResponseInterface $response) {
+            // Make sure that the content of the body is available again.
+            // $contents = $response->getBody()->getContents() ?? '';
+            $response->getBody()->rewind();
+
+            return $response->withHeader('X-Middleware-Response-Time', microtime(true));
+        }), 'Middleware::mapResponse');
+
+        // 在发送请求之前和之后调用回调的中间件
+        $handlerStack->push(Middleware::tap(function(RequestInterface $request, array $options) {
+            if (PHP_SAPI === 'cli') {
+                echo '>>> ', date('Y-m-d H:i:s'), ' Before sending the request', PHP_EOL;
+            }
+        }, function(RequestInterface $request, array $options, PromiseInterface $response) {
+            if (PHP_SAPI === 'cli') {
+                echo '>>> ', date('Y-m-d H:i:s'), ' After receiving the response', PHP_EOL;
+            }
+        }), 'Middleware::tap');
+
+        // 创建日志中间件
+        // 先入后出，执行后必须重置响应内容，否则会导致获取不到响应内容
+        if ($registerLog) {
+            $handlerStack->push($logMiddleware ?? $this->getLoggerMiddleware(), 'Middleware::log');
+        }
+
+        $options['handler'] = $handlerStack;
+        $options['debug']   = PHP_SAPI === 'cli';
+
+        return $options;
     }
 
 }
