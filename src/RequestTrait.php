@@ -431,7 +431,7 @@ trait RequestTrait
      */
     protected function do(?string $method = '', ?string $url = '', array $params = [], array $options = []): Response
     {
-        return $this->doSyncRequest($method ?: $this->getMethod(), $url ?: $this->getUri(), array_replace($params ?: $this->getParams(), $options ?: $this->getOptions()));
+        return $this->doSyncRequest($method ?: $this->getMethod(), $url ?: $this->getUri(), $params ?: $this->getParams(), $options ?: $this->getOptions());
     }
 
     /**
