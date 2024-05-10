@@ -31,7 +31,7 @@ class ClientRequestTest extends TestCase
         $requestParams         = array_replace_recursive($requestParams, [
             'platform'   => $platform,
             'account_id' => $accountId,
-            'params'     => json_encode($params),
+            'params'     => json_encode($params, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
             'partner_id' => 390627,
             'timestamp'  => time(),
         ]);

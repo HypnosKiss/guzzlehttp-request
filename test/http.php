@@ -24,7 +24,7 @@ function withRequestParams($platform, $accountId, array $params = [], array $req
     $requestParams         = array_replace_recursive($requestParams, [
         'platform'   => $platform,
         'account_id' => $accountId,
-        'params'     => json_encode($params),
+        'params'     => json_encode($params, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
         'partner_id' => 390627,
         'timestamp'  => time(),
     ]);
@@ -36,7 +36,7 @@ function withRequestParams($platform, $accountId, array $params = [], array $req
 $order_id      = '5271164584257';
 $url           = "http://middleware.tenflyer.com/v1/shopify/order/get_order_detail";
 $requestParams = withRequestParams('shopify', 5001728, ['order_id' => $order_id]);
-// $params        = ServiceRequest::withBody(json_encode($requestParams));
+// $params        = ServiceRequest::withBody(json_encode($requestParams, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
 // $params        = ServiceRequest::withJson($requestParams);
 $params = ServiceRequest::withFormParams($requestParams);
 $rs     = ServiceRequest::instance()->post($url, $params, ServiceRequest::withRetry(ServiceRequest::withLog(ServiceRequest::withTap(ServiceRequest::withDelay(ServiceRequest::withDebug())))))->getSuccessResponse(200);

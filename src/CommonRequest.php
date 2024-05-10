@@ -314,12 +314,13 @@ class CommonRequest extends Request
      * @return array
      * {@see \GuzzleHttp\Middleware::log()}
      */
-    protected function withLog(array $config = [], LoggerInterface $logger = null, MessageFormatterInterface $formatter = null, string $logLevel = 'info'): array
+    protected function withLog(array $config = [], LoggerInterface $logger = null, MessageFormatterInterface $formatter = null, string $logLevel = 'debug'): array
     {
         // 创建 Handler
         $handlerStack = $this->getHandler($config);
         // 日志中间件
-        $middlewareLog = $logger ? Middleware::log($logger, $formatter ?? new MessageFormatter(), $logLevel) : $this->getLoggerMiddleware();
+        $formatter     = $formatter ?? new MessageFormatter();
+        $middlewareLog = $logger ? Middleware::log($logger, $formatter, $logLevel) : $this->getLoggerMiddleware($logger, $formatter, $logLevel);
         // 创建日志中间件
         $handlerStack->push($middlewareLog);
         $config['handler'] = $handlerStack;
@@ -374,15 +375,16 @@ class CommonRequest extends Request
      * Author: Sweeper <wili.lixiang@gmail.com>
      * DateTime: 2023/9/15 15:03
      * @param LoggerInterface|callable $logger
-     * @param string|callable Constant or callable that accepts a Response.
+     * @param string|callable          $formatter Constant or callable that accepts a Response.
+     * @param string                   $logLevel  Sets the log level to use, which can be either a string or a callable  that accepts a response (which could be null). A log level could also  be null, which indicates that the default log level should be used.
      * @return \Concat\Http\Middleware\Logger
      */
-    protected function getLoggerMiddleware(callable $logger = null, callable $formatter = null): Logger
+    protected function getLoggerMiddleware($logger = null, $formatter = null, string $logLevel = ''): Logger
     {
-        $logger    = $logger ?? function($level, $message, array $context) {
-            echo date('Y-m-d H:i:s') . " [$level] " . (is_string($message) ? $message : json_encode((array)$message, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)), PHP_EOL;
+        $logger    = $logger ?? static function($level, $message, array $context) {
+            echo date('Y-m-d H:i:s') . " [$level] " . (json_encode(compact('message', 'context'), JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)), PHP_EOL;
         };
-        $formatter = $formatter ?? function($request, $response, $reason) {
+        $formatter = $formatter ?? static function($request, $response, $reason) {
             /**
              * @var \GuzzleHttp\Psr7\Request  $request
              * @var \GuzzleHttp\Psr7\Response $response
@@ -429,7 +431,10 @@ class CommonRequest extends Request
             );
         };
 
-        return new Logger($logger, $formatter);
+        $loggerMiddleware = new Logger($logger, $formatter);
+        $loggerMiddleware->setLogLevel($logLevel);
+
+        return $loggerMiddleware;
     }
 
     /**
@@ -464,7 +469,7 @@ class CommonRequest extends Request
     protected function withRequestParams(array $params = [], array &$requestParams = [], $appKey = null, $secretKey = null): array
     {
         $requestParams         = array_replace_recursive($requestParams, [
-            'params'     => json_encode($params),
+            'params'     => json_encode($params, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
             'partner_id' => $appKey,
             'timestamp'  => time(),
         ]);

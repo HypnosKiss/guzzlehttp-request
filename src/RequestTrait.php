@@ -385,11 +385,11 @@ trait RequestTrait
             $response = $this->getClient()->request($method, $url, array_replace($params, $options));
 
             if (!$this->assertHttpSuccess($code = $response->getStatusCode())) {
-                return Response::error("Response Error[{$code}]:" . json_encode($response, JSON_UNESCAPED_UNICODE));
+                return Response::error("Response Error[{$code}]:" . json_encode($response, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
             }
 
             if (is_null($response) || !is_object($response)) {
-                return Response::error('Format Error:' . json_encode($response, JSON_UNESCAPED_UNICODE));
+                return Response::error('Format Error:' . json_encode($response, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
             }
 
             /** 解析结果 */

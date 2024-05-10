@@ -52,7 +52,7 @@ class ServiceRequest extends CommonRequest
      * @param string|null $baseUrl
      * @param string      $extraUrl
      * @param array       $signParams
-     * @param array       $params ['platform' => $platform, 'account_id' => $accountId, 'params' => json_encode($params)]
+     * @param array       $params ['platform' => $platform, 'account_id' => $accountId, 'params' => json_encode($params, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)]
      * @param array       $arrayMergeParams
      * @param array       $options
      * @param string      $method
@@ -65,7 +65,7 @@ class ServiceRequest extends CommonRequest
         $requestInfo = $this->sign($signParams, array_merge([
             'platform'   => $params['platform'] ?? '',
             'account_id' => $params['account_id'] ?? 0,
-            'params'     => json_encode($params),
+            'params'     => json_encode($params, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
         ], $arrayMergeParams));// 签名
         $body        = array_replace(static::withJson($requestInfo), ['connect_timeout' => 30, 'timeout' => 120], $options);
         $response    = $client->request($method ?: 'POST', $extraUrl, $body);
