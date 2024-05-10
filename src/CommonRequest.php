@@ -314,7 +314,7 @@ class CommonRequest extends Request
      * @return array
      * {@see \GuzzleHttp\Middleware::log()}
      */
-    protected function withLog(array $config = [], LoggerInterface $logger = null, MessageFormatterInterface $formatter = null, string $logLevel = 'debug'): array
+    protected function withLog(array $config = [], LoggerInterface $logger = null, MessageFormatterInterface $formatter = null, string $logLevel = 'info'): array
     {
         // 创建 Handler
         $handlerStack = $this->getHandler($config);
