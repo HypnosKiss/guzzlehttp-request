@@ -319,8 +319,7 @@ class CommonRequest extends Request
         // 创建 Handler
         $handlerStack = $this->getHandler($config);
         // 日志中间件
-        $formatter     = $formatter ?? new MessageFormatter();
-        $middlewareLog = $logger ? Middleware::log($logger, $formatter, $logLevel) : $this->getLoggerMiddleware($logger, $formatter, $logLevel);
+        $middlewareLog = $logger ? Middleware::log($logger, $formatter ?? new MessageFormatter(), $logLevel) : $this->getLoggerMiddleware($logger, $formatter, $logLevel);
         // 创建日志中间件
         $handlerStack->push($middlewareLog);
         $config['handler'] = $handlerStack;
