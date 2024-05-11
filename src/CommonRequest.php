@@ -4,7 +4,7 @@ namespace Sweeper\GuzzleHttpRequest;
 
 use Closure;
 use Concat\Http\Middleware\Logger;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\MessageFormatter;
 use GuzzleHttp\MessageFormatterInterface;
@@ -157,11 +157,11 @@ class CommonRequest extends Request
     {
         return function($retries, RequestInterface $request, ResponseInterface $response = null, \Throwable $exception = null) use ($maxRetryTimes, $allowRetryFunc) {
             // 最允许重试次数内，继续重试，超过最大重试次数，不再重试
-            if ($retries < $maxRetryTimes) {
-                return true;
+            if ($retries >= $maxRetryTimes) {
+                return false;
             }
             // 请求失败，继续重试
-            if ($exception instanceof RequestException) {
+            if ($exception instanceof ConnectException) {
                 return true;
             }
 
