@@ -407,8 +407,19 @@ class CommonRequest extends Request
                 }
             }
 
-            $uri  = $request->getUri();
-            $path = $uri->getPath();
+            $uri                     = $request->getUri();
+            $method                  = $request->getMethod();
+            $path                    = $uri->getPath();
+            $requestProtocolVersion  = $request->getProtocolVersion();
+            $requestContents         = $requestBody->getContents();
+            $responseProtocolVersion = $response->getProtocolVersion();
+            $responseStatusCode      = $response->getStatusCode();
+            $responseReasonPhrase    = $response->getReasonPhrase();
+            $responseContents        = $response->getBody()->getContents();
+
+            if ($query = $uri->getQuery()) {
+                $path .= '?' . $query;
+            }
 
             if ($query = $uri->getQuery()) {
                 $path .= '?' . $query;
@@ -417,16 +428,16 @@ class CommonRequest extends Request
             return sprintf(
                 "Request %s\n%s %s HTTP/%s\r\n%s\r\n\r\n%s\r\n--------------------\r\nHTTP/%s %s %s\r\n%s\r\n\r\n%s",
                 $uri,
-                $request->getMethod(),
+                $method,
                 $path,
-                $request->getProtocolVersion(),
+                $requestProtocolVersion,
                 implode("\r\n", $requestHeaders),
-                $requestBody->getContents(),
-                $response->getProtocolVersion(),
-                $response->getStatusCode(),
-                $response->getReasonPhrase(),
+                $requestContents,
+                $responseProtocolVersion,
+                $responseStatusCode,
+                $responseReasonPhrase,
                 implode("\r\n", $responseHeaders),
-                $response->getBody()->getContents()
+                $responseContents
             );
         };
 
