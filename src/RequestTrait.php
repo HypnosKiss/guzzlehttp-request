@@ -395,9 +395,30 @@ trait RequestTrait
             /** 解析结果 */
             return $this->resolveResponse($response);
         } catch (RequestException $e) {
+            $request  = $e->getRequest();
+            $response = $e->getResponse();
+            // 处理异常
+            $requestInfo = [
+                'url'     => (string)$request->getUri(),
+                'method'  => $request->getMethod(),
+                'headers' => $request->getHeaders(),
+                'body'    => (string)$request->getBody(),
+            ];
+
+            $responseInfo = null;
+            if ($e->hasResponse()) {
+                $responseInfo = [
+                    'status_code' => $response->getStatusCode(),
+                    'headers'     => $response->getHeaders(),
+                    'body'        => (string)$response->getBody(),
+                ];
+            }
+
             return Response::error($e->getMessage(), [
-                'request'  => $e->getRequest()->getBody()->getContents(),// 请求失败这里一般是拿不到数据的
-                'response' => $e->getResponse() ? $e->getResponse()->getBody()->getContents() : null,
+                'requestInfo'  => $requestInfo,
+                'responseInfo' => $responseInfo,
+                'request'      => $e->getRequest()->getBody()->getContents(),// 请求失败这里一般是拿不到数据的
+                'response'     => $e->getResponse() ? $e->getResponse()->getBody()->getContents() : null,
             ]);
         } catch (\Throwable $e) {
             return Response::error($e->getMessage());

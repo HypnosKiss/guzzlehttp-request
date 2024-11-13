@@ -11,6 +11,7 @@ use GuzzleHttp\MessageFormatterInterface;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\RequestOptions;
+use GuzzleHttp\TransferStats;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
@@ -137,12 +138,20 @@ class CommonRequest extends Request
      * 获取处理程序堆栈
      * Author: Sweeper <wili.lixiang@gmail.com>
      * DateTime: 2023/9/15 14:12
-     * @param array $config
+     * @param array         $config
+     * @param callable|null $handler
      * @return \GuzzleHttp\HandlerStack
      */
-    protected function getHandler(array $config = []): HandlerStack
+    protected function getHandler(array $config = [], callable $handler = null): HandlerStack
     {
-        return $config['handler'] ?? HandlerStack::create();
+        // 创建 Handler
+        if (isset($config['handler']) && $config['handler'] instanceof HandlerStack) {
+            $handlerStack = $config['handler'];
+        } else {
+            $handlerStack = HandlerStack::create($handler);
+        }
+
+        return $handlerStack;
     }
 
     /**
@@ -257,7 +266,7 @@ class CommonRequest extends Request
     {
         // 创建 Handler
         $config['handler'] = $this->getHandler($config);
-        $config['debug']   = true;
+        $config['debug']   = PHP_SAPI === 'cli';
 
         return $config;
     }
@@ -380,7 +389,7 @@ class CommonRequest extends Request
      */
     protected function getLoggerMiddleware($logger = null, $formatter = null, string $logLevel = ''): Logger
     {
-        $logger    = $logger ?? static function($level, $message, array $context) {
+        $logger    = $logger ?? static function($level, $message, array $context) {// $context = compact('request', 'response', 'reason');
             echo date('Y-m-d H:i:s') . " [$level] " . (json_encode(compact('message', 'context'), JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)), PHP_EOL;
         };
         $formatter = $formatter ?? static function($request, $response, $reason) {
@@ -388,8 +397,9 @@ class CommonRequest extends Request
              * @var \GuzzleHttp\Psr7\Request  $request
              * @var \GuzzleHttp\Psr7\Response $response
              */
-            $requestBody = $request->getBody();
-            $requestBody->rewind();
+            // Make sure that the content of the body is available again.
+            $request && $request->getBody() && $request->getBody()->rewind();
+            $response && $response->getBody() && $response->getBody()->rewind();
 
             //请求头
             $requestHeaders = [];
@@ -401,9 +411,11 @@ class CommonRequest extends Request
 
             //响应头
             $responseHeaders = [];
-            foreach ($response->getHeaders() as $k => $vs) {
-                foreach ($vs as $v) {
-                    $responseHeaders[] = "$k: $v";
+            if ($response) {
+                foreach ($response->getHeaders() as $k => $vs) {
+                    foreach ($vs as $v) {
+                        $responseHeaders[] = "$k: $v";
+                    }
                 }
             }
 
@@ -411,19 +423,19 @@ class CommonRequest extends Request
             $method                  = $request->getMethod();
             $path                    = $uri->getPath();
             $requestProtocolVersion  = $request->getProtocolVersion();
-            $requestContents         = $requestBody->getContents();
-            $responseProtocolVersion = $response->getProtocolVersion();
-            $responseStatusCode      = $response->getStatusCode();
-            $responseReasonPhrase    = $response->getReasonPhrase();
-            $responseContents        = $response->getBody()->getContents();
+            $requestContents         = $request->getBody()->getContents();
+            $responseProtocolVersion = $response ? $response->getProtocolVersion() : null;
+            $responseStatusCode      = $response ? $response->getStatusCode() : null;
+            $responseReasonPhrase    = $response ? $response->getReasonPhrase() : null;
+            $responseContents        = $response ? $response->getBody()->getContents() : null;
 
             if ($query = $uri->getQuery()) {
                 $path .= '?' . $query;
             }
 
-            if ($query = $uri->getQuery()) {
-                $path .= '?' . $query;
-            }
+            // Make sure that the content of the body is available again.
+            $request && $request->getBody() && $request->getBody()->rewind();
+            $response && $response->getBody() && $response->getBody()->rewind();
 
             return sprintf(
                 "Request %s\n%s %s HTTP/%s\r\n%s\r\n\r\n%s\r\n--------------------\r\nHTTP/%s %s %s\r\n%s\r\n\r\n%s",
@@ -500,12 +512,7 @@ class CommonRequest extends Request
      */
     protected function addOptions(array $options = [], callable $handler = null, bool $registerLog = false, callable $logMiddleware = null): array
     {
-        // 创建 Handler
-        if (isset($options['handler']) && $options['handler'] instanceof HandlerStack) {
-            $handlerStack = $options['handler'];
-        } else {
-            $handlerStack = HandlerStack::create($handler);
-        }
+        $handlerStack = $this->getHandler($options, $handler);
 
         // 附带请求头信息
         $handlerStack->push(Middleware::mapRequest(function(RequestInterface $request) {
@@ -542,6 +549,130 @@ class CommonRequest extends Request
         $options['debug']   = PHP_SAPI === 'cli';
 
         return $options;
+    }
+
+    /**
+     * 统计信息中间件
+     * @param array         $config
+     * @param callable|null $handler
+     * @return array
+     */
+    protected function withStats(array $config = [], callable $handler = null): array
+    {
+        // 创建 Handler
+        $handlerStack = $this->getHandler($config, $handler);
+
+        /**
+         * on_stats：（可调用）允许您访问请求的传输统计信息，并访问与客户端关联的处理程序的较低级别传输详细信息。
+         * on_stats 是在处理程序完成发送请求时调用的可调用对象。调用回调时，会显示有关请求、收到的响应或遇到的错误的传输统计信息。数据中包括发送请求所花费的总时间。
+         */
+        if (empty($config[RequestOptions::ON_STATS])) {
+            $config[RequestOptions::ON_STATS] = function(TransferStats $stats) {
+                /** @var RequestInterface $request */
+                $request = $stats->getRequest();
+                /** @var ResponseInterface|null $response */
+                $response     = $stats->getResponse();
+                $transferTime = $stats->getTransferTime();
+                $statsInfo    = $stats->getHandlerStats();
+
+                // Make sure that the content of the body is available again.
+                $request && $request->getBody() && $request->getBody()->rewind();
+                $response && $response->getBody() && $response->getBody()->rewind();
+
+                // 请求信息
+                $requestInfo = [
+                    'url'     => (string)$request->getUri(),
+                    'method'  => $request->getMethod(),
+                    'path'    => $request->getUri()->getQuery() ? $request->getUri()->getPath() . '?' . $request->getUri()->getQuery() : $request->getUri()->getPath(),
+                    'headers' => $request->getHeaders(),
+                    'body'    => (string)$request->getBody(),
+                ];
+
+                // 响应信息
+                $responseInfo = null;
+                if ($response) {
+                    $responseInfo = [
+                        'statusCode' => $response->getStatusCode(),
+                        'headers'    => $response->getHeaders(),
+                        'reason'     => $response->getReasonPhrase(),
+                        'body'       => (string)$response->getBody(),
+                    ];
+                }
+
+                // 格式化后的信息
+                // $formatted = $this->formatter($request, $response);
+
+                // Make sure that the content of the body is available again.
+                $request && $request->getBody() && $request->getBody()->rewind();
+                $response && $response->getBody() && $response->getBody()->rewind();
+
+                $this->setStats(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo'));
+
+                echo ' stats >>> ' . json_encode(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo')), PHP_EOL;
+            };
+        }
+        $config['handler'] = $handlerStack;
+
+        return $config;
+    }
+
+    /**
+     * 格式化请求信息、响应信息
+     * Author: Sweeper <wili.lixiang@gmail.com>
+     * Time: 2024/10/21 11:38:06
+     * @param \GuzzleHttp\Psr7\Request       $request
+     * @param \GuzzleHttp\Psr7\Response|null $response
+     * @param mixed                          $reason
+     * @return array
+     */
+    protected function formatter($request, $response, $reason = null): array
+    {
+        /**
+         * @var \GuzzleHttp\Psr7\Request  $request
+         * @var \GuzzleHttp\Psr7\Response $response
+         */
+        // Make sure that the content of the body is available again.
+        $request && $request->getBody() && $request->getBody()->rewind();
+        $response && $response->getBody() && $response->getBody()->rewind();
+
+        //请求头
+        $requestHeaders = [];
+        foreach ($request->getHeaders() as $k => $vs) {
+            foreach ($vs as $v) {
+                $requestHeaders[] = "$k: $v";
+            }
+        }
+
+        //响应头
+        $responseHeaders = [];
+        if ($response) {
+            foreach ($response->getHeaders() as $k => $vs) {
+                foreach ($vs as $v) {
+                    $responseHeaders[] = "$k: $v";
+                }
+            }
+        }
+
+        $uri                     = $request->getUri();
+        $method                  = $request->getMethod();
+        $path                    = $uri->getPath();
+        $requestProtocolVersion  = $request->getProtocolVersion();
+        $requestContents         = (string)$request->getBody();
+        $responseProtocolVersion = $response ? $response->getProtocolVersion() : null;
+        $responseStatusCode      = $response ? $response->getStatusCode() : null;
+        $responseReasonPhrase    = $response ? $response->getReasonPhrase() : null;
+        $responseContents        = $response ? (string)$response->getBody() : null;
+
+        // Make sure that the content of the body is available again.
+        $request && $request->getBody() && $request->getBody()->rewind();
+        $response && $response->getBody() && $response->getBody()->rewind();
+
+        if ($query = $uri->getQuery()) {
+            $path .= '?' . $query;
+        }
+        $uri = (string)$uri;
+
+        return compact('uri', 'method', 'path', 'requestProtocolVersion', 'requestHeaders', 'requestContents', 'responseProtocolVersion', 'responseHeaders', 'responseStatusCode', 'responseReasonPhrase', 'responseContents');
     }
 
 }
