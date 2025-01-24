@@ -643,16 +643,16 @@
         },
         {
             "name": "sweeper/design-pattern",
-            "version": "1.0.3",
+            "version": "1.0.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/HypnosKiss/design-pattern.git",
-                "reference": "76954d3fa24f33d92b63475a72e333b4b2dd214d"
+                "reference": "b2bad435e1e7664e262e27a01a3e762b3b62533c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/HypnosKiss/design-pattern/zipball/76954d3fa24f33d92b63475a72e333b4b2dd214d",
-                "reference": "76954d3fa24f33d92b63475a72e333b4b2dd214d",
+                "url": "https://api.github.com/repos/HypnosKiss/design-pattern/zipball/b2bad435e1e7664e262e27a01a3e762b3b62533c",
+                "reference": "b2bad435e1e7664e262e27a01a3e762b3b62533c",
                 "shasum": ""
             },
             "require": {
@@ -686,9 +686,9 @@
             ],
             "support": {
                 "issues": "https://github.com/HypnosKiss/design-pattern/issues",
-                "source": "https://github.com/HypnosKiss/design-pattern/tree/1.0.3"
+                "source": "https://github.com/HypnosKiss/design-pattern/tree/1.0.4"
             },
-            "time": "2023-11-06T10:30:08+00:00"
+            "time": "2025-01-24T09:50:47+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
