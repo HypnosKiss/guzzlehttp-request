@@ -257,10 +257,14 @@ class CommonRequest extends Request
         // 创建 Handler
         $handlerStack = $this->getHandler($config);
         $before       = $before && is_callable($before) ? $before : function(RequestInterface $request, array $options) {
-            echo '>>> ', date('Y-m-d H:i:s'), ' Before sending the request', PHP_EOL;
+            if (PHP_SAPI === 'cli') {
+                echo '>>> ', date('Y-m-d H:i:s'), ' Before sending the request', PHP_EOL;
+            }
         };
         $after        = $after && is_callable($after) ? $after : function(RequestInterface $request, array $options, PromiseInterface $response) {
-            echo '>>> ', date('Y-m-d H:i:s'), ' After receiving the response', PHP_EOL;
+            if (PHP_SAPI === 'cli') {
+                echo '>>> ', date('Y-m-d H:i:s'), ' After receiving the response', PHP_EOL;
+            }
         };
         // 在发送请求之前和之后调用回调的中间件
         $handlerStack->push(Middleware::tap($before, $after));
@@ -405,7 +409,9 @@ class CommonRequest extends Request
     protected function getLoggerMiddleware($logger = null, $formatter = null, string $logLevel = ''): Logger
     {
         $logger    = $logger ?? static function($level, $message, array $context) {// $context = compact('request', 'response', 'reason');
-            echo date('Y-m-d H:i:s') . " [$level] " . (json_encode(compact('message', 'context'), JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)), PHP_EOL;
+            if (PHP_SAPI === 'cli') {
+                echo date('Y-m-d H:i:s') . " [$level] " . (json_encode(compact('message', 'context'), JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)), PHP_EOL;
+            }
         };
         $formatter = $formatter ?? static function($request, $response, $reason) {
             /**
@@ -623,7 +629,9 @@ class CommonRequest extends Request
 
                 $this->setStatsInfo(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo'));
 
-                echo ' stats >>> ' . json_encode(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo')), PHP_EOL;
+                if (PHP_SAPI === 'cli') {
+                    echo ' stats >>> ' . json_encode(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo')), PHP_EOL;
+                }
             };
         }
         $config['handler'] = $handlerStack;
