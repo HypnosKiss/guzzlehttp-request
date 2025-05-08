@@ -35,6 +35,21 @@ class CommonRequest extends Request
     /** @var int 成功 CODE */
     protected $successCode = 0;
 
+    /** @var array 请求统计信息 */
+    protected $statsInfo = [];
+
+    public function getStatsInfo(): array
+    {
+        return $this->statsInfo;
+    }
+
+    public function setStatsInfo(array $statsInfo): self
+    {
+        $this->statsInfo = $statsInfo;
+
+        return $this;
+    }
+
     /**
      * Author: Sweeper <wili.lixiang@gmail.com>
      * DateTime: 2023/9/15 13:51
@@ -606,7 +621,7 @@ class CommonRequest extends Request
                 $request && $request->getBody() && $request->getBody()->rewind();
                 $response && $response->getBody() && $response->getBody()->rewind();
 
-                $this->setStats(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo'));
+                $this->setStatsInfo(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo'));
 
                 echo ' stats >>> ' . json_encode(compact('requestInfo', 'responseInfo', 'transferTime', 'statsInfo')), PHP_EOL;
             };
